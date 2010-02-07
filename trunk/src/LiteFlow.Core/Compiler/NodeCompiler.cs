@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using LiteFlow.Core.Model;
 using log4net;
 
@@ -8,11 +9,12 @@ namespace LiteFlow.Core.Compiler
 	class NodeCompiler : INodeVisitor
 	{
 		List<Instruction> m_instructions = new List<Instruction>();
-		Dictionary<Workflow, int> m_subAddresses = new Dictionary<Workflow, int>();
+		Dictionary<int, int> m_subAddresses = new Dictionary<int, int>();
+		List<Workflow> m_subs = new List<Workflow>();
 
 		public void Visit(Workflow node)
 		{
-			m_subAddresses[node] = NextLoc;
+			m_subAddresses[node.GetHashCode()] = NextLoc;
 
 			foreach (var child in node.Nodes)
 			{
@@ -53,11 +55,9 @@ namespace LiteFlow.Core.Compiler
 
 		public void Visit(SubCallNode node)
 		{
-			Workflow sub = node.Subroutine;
-			if(!m_subAddresses.ContainsKey(sub))
-				sub.Accept(this);
-
-			AddInstruction(OpCode.SUB, m_subAddresses[sub]);
+			m_subs.Add(node.Subroutine);
+			int nodeHash = node.Subroutine.GetHashCode();
+			AddInstruction(OpCode.SUB, nodeHash);
 		}
 
 		public void Visit(IfNode node)
@@ -118,6 +118,20 @@ namespace LiteFlow.Core.Compiler
 		private int LocationOf(Instruction instruction)
 		{
 			return m_instructions.IndexOf(instruction);
+		}
+
+		public void Compile(Workflow workflow)
+		{
+			workflow.Accept(this);
+			m_subs.ForEach(Visit);
+			FixSubroutineCalls();
+		}
+
+		private void FixSubroutineCalls()
+		{
+			m_instructions
+				.FindAll(i => i.OpCode == OpCode.SUB)
+				.ForEach(i => i.Argument = m_subAddresses[i.Argument]);
 		}
 	}
 }

@@ -96,12 +96,16 @@ namespace LiteFlow.Core.Executor
 				// todo: call
 			}
 
+			if (curr.OpCode == OpCode.SUB)
+			{
+				RunSubroutine(idx);
+			}
+
 			switch (curr.OpCode)
 			{
 				case OpCode.JF:
 				case OpCode.JT:
 				case OpCode.JUMP:
-				case OpCode.SUB:
 				case OpCode.FORK:
 					return (curr.Argument - idx);
 				default:
@@ -141,20 +145,23 @@ namespace LiteFlow.Core.Executor
 				thread.Start(index);
 			}
 
-			foreach (Thread thread in threads)
-			{
-				thread.Join();
-			}
+			threads.ForEach(t => t.Join());
 		}
 
 		private void ParallelBranchProc(object index)
 		{
 			int idx = (int) index + 1;
-			Instruction curr = m_instructions[idx];
-		
 			Executor ex = ForkNewExecutor();  
 			ex.Run(idx);
       }
+
+		private void RunSubroutine(int idx)
+		{
+			Instruction curr = m_instructions[idx];
+			Executor ex = ForkNewExecutor();  
+			ex.Run(curr.Argument);
+		}
+
 
 		private Executor ForkNewExecutor()
 		{
