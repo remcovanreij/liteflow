@@ -8,7 +8,7 @@ namespace LiteFlow.Core.Compiler
 		public IList<Instruction> Compile(Workflow workflow)
 		{
 			NodeCompiler nc = new NodeCompiler();
-			workflow.Accept(nc);
+			nc.Compile(workflow);
 			return nc.Instructions;
 		}
 	}
